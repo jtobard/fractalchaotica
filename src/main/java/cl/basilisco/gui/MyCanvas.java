@@ -14,7 +14,6 @@ import javax.swing.JPanel;
 
 import cl.basilisco.core.Biomorph;
 import cl.basilisco.core.ComplexNumber;
-import cl.basilisco.core.Formula;
 import cl.basilisco.core.Fractal;
 import cl.basilisco.core.Julia;
 import cl.basilisco.core.Lambda;
@@ -296,13 +295,6 @@ public class MyCanvas extends JPanel {
 			
 	}
 	
-	public void setNuevaFormula(String cabecera, String formula, double r,double i){
-		this.constante= new ComplexNumber(r,i);
-		this.formulafinal = Formula.transforma(formula, new ComplexNumber(), null, constante);
-		this.cabecera = cabecera;
-		this.fractal=6;
-	}
-	
 	public void setColor(float r, float g, float b){
 		this.r=r;
 		this.g=g;
@@ -353,9 +345,6 @@ public class MyCanvas extends JPanel {
 					break;
 				case 5: //biomorph
 					color = Biomorph.itera(c,tope,bn,this.r,this.g,this.b);
-					break;
-				case 6: // formula personalizada
-					color = Formula.itera(cabecera, formulafinal, c, tope, bn,this.r,this.g,this.b);
 					break;
 				}
 				

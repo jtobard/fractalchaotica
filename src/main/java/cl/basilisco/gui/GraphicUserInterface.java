@@ -38,7 +38,6 @@ public class GraphicUserInterface extends JFrame {
 	private JPanel panel1 = null;
 	private JPanel panel2 = null;
 	private JPanel pnlColor = null;
-	private JPanel pnlFormula = null;
 	private MyCanvas pnlCanvas = null;
 	private JButton btnZoom = null;
 	private JButton btnReset = null;
@@ -58,8 +57,6 @@ public class GraphicUserInterface extends JFrame {
 	private JButton btnSetColor = null;
 	private JButton btnSetColorHelp = null;
 	private JTextField txtFuncHeader = null;
-	private JTextField txtFuncBody = null;
-	private JButton btnGo = null;
 	private JButton btnFuncHelp = null;
 	
 	
@@ -74,8 +71,7 @@ public class GraphicUserInterface extends JFrame {
 
 	/**
 	 * This method initializes this
-	 * 
-	 * @return void
+	 *
 	 */
 	private void initialize() {
 		this.setContentPane(getPnlBackground());
@@ -112,7 +108,6 @@ public class GraphicUserInterface extends JFrame {
 			pnlOptions.add(getPanel1(), null);
 			pnlOptions.add(getPanel2(), null);
 			pnlOptions.add(getPnlColor(), null);
-			//pnlOptions.add(getPnlFormula(), null);
 		}
 		return pnlOptions;
 	}
@@ -222,27 +217,6 @@ public class GraphicUserInterface extends JFrame {
 			
 		}
 		return pnlColor;
-	}
-
-	/**
-	 * This method initializes jPanel5
-	 * 	
-	 * @return javax.swing.JPanel	
-	 */
-	private JPanel getPnlFormula() {
-		if (pnlFormula == null) {
-			pnlFormula = new JPanel();
-			pnlFormula.setEnabled(false);
-			pnlFormula.setPreferredSize(new Dimension(0,20));
-			pnlFormula.setLayout(new BoxLayout(getPnlFormula(), BoxLayout.X_AXIS));
-			pnlFormula.add(new JLabel("F("));
-			pnlFormula.add(getJTxtCabecera());
-			pnlFormula.add(new JLabel(")="));
-			pnlFormula.add(getJTxtFormula());
-			pnlFormula.add(getBtnGo());
-			pnlFormula.add(getBtnFuncHelp());
-		}
-		return pnlFormula;
 	}
 	
 	/**
@@ -364,13 +338,12 @@ public class GraphicUserInterface extends JFrame {
 			btnSave.setText("Guardar Imagen");
 			btnSave.addActionListener(new java.awt.event.ActionListener() {
 				public void actionPerformed(java.awt.event.ActionEvent e) {
-					String path = "";
 					JFileChooser fc = new JFileChooser();
 					fc.setDialogTitle("Guardar imagen");
 					FileFilter jpegFilter = new ExtensionFileFilter("*.png", "png" );
 					fc.setFileFilter(jpegFilter);
 					if(fc.showSaveDialog(pnlCanvas)== JFileChooser.APPROVE_OPTION){
-						path = fc.getSelectedFile().getAbsolutePath();
+						String path = fc.getSelectedFile().getAbsolutePath();
 						pnlCanvas.guardar(path);
 					}
 				}
@@ -420,65 +393,9 @@ public class GraphicUserInterface extends JFrame {
 		}
 		return btnSetColorHelp;
 	}
+
 	
-	/**
-	 * This method initializes jbtncolor
-	 * 	
-	 * @return javax.swing.JButton	
-	 */
-	private JButton getBtnGo() {
-		if (btnGo == null) {
-			btnGo= new JButton();
-			btnGo.setText("Ver Resultado");
-			btnGo.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					String formula = txtFuncBody.getText();
-					String cabecera=  txtFuncHeader.getText();
-					double r = Double.parseDouble(txtZr.getText());
-					double i = Double.parseDouble(txtZi.getText());
-					pnlCanvas.setNuevaFormula(cabecera, formula, r, i);
-					pnlCanvas.pinta();
-				}
-			});
-		}
-		return btnGo;
-	}
 	
-	/**
-	 * This method initializes jbtncolorAyuda
-	 * 	
-	 * @return javax.swing.JButton	
-	 */
-	private JButton getBtnFuncHelp() {
-		if (btnFuncHelp == null) {
-			btnFuncHelp= new JButton();
-			btnFuncHelp.setText("Que es esto");
-			btnFuncHelp.addActionListener(new java.awt.event.ActionListener() {
-				public void actionPerformed(java.awt.event.ActionEvent e) {
-					String msj = "------Formula----------------"+ "\n"+
-					"Numeros complejos:"+"\n"+
-					"Z = punto eje"+"\n"+
-					"C = constante escrita en campos"+"\n"+
-					"M = Numero complejo q parte siempre en cero (como Mandelbrot)"+"\n"+
-					"x = Z.real"+"\n"+
-					"y = Z.imaginario"+"\n"+
-					"Operaciones:"+"\n"+
-					//"( ) = parentesis"+"\n"+
-					"+ , -, *, / = suma, resta, multiplicacion, division solo con complejos/"+"\n"+
-					//"e = exp(Z) = e^Z"+"\n"+
-					"^ = eleva solo n° reales"+"\n"+
-					//"l = log(Z) = logaritmo"+"\n"+
-					//"r = sqrt(Z) = raiz de Z"+"\n"+
-					//"s = sin(Z) = seno de Z"+"\n"+
-					//"c = cos(Z) = coseno de Z"+"\n"+
-					//"t = tan(Z) = tangente"+
-					"";
-					JOptionPane.showMessageDialog(null, msj, "Ayuda", JOptionPane.INFORMATION_MESSAGE);
-				}
-			});
-		}
-		return btnFuncHelp;
-	}
 	
 	/**
 	 * This method initializes jtextfield	
@@ -578,7 +495,6 @@ public class GraphicUserInterface extends JFrame {
 						txtZr.setEnabled(false);
 						txtZi.setEnabled(false);
 						btnRefresh.setEnabled(false);
-						bloqueaFormula(true);
 						pnlCanvas.pinta();
 						break;
 					case 2:
@@ -589,7 +505,6 @@ public class GraphicUserInterface extends JFrame {
 							txtZr.setEnabled(true);
 							txtZi.setEnabled(true);
 							btnRefresh.setEnabled(true);
-							bloqueaFormula(true);
 							pnlCanvas.pinta();
 							
 						}catch(NumberFormatException ex){
@@ -601,7 +516,6 @@ public class GraphicUserInterface extends JFrame {
 						txtZr.setEnabled(false);
 						txtZi.setEnabled(false);
 						btnRefresh.setEnabled(false);
-						bloqueaFormula(true);
 						pnlCanvas.pinta();
 						break;
 					case 4://lambda
@@ -612,7 +526,6 @@ public class GraphicUserInterface extends JFrame {
 							txtZr.setEnabled(true);
 							txtZi.setEnabled(true);
 							btnRefresh.setEnabled(true);
-							bloqueaFormula(true);
 							pnlCanvas.pinta();
 							
 						}catch(NumberFormatException ex){
@@ -624,14 +537,7 @@ public class GraphicUserInterface extends JFrame {
 						txtZr.setEnabled(false);
 						txtZi.setEnabled(false);
 						btnRefresh.setEnabled(false);
-						bloqueaFormula(true);
 						pnlCanvas.pinta();
-						break;
-					case 6:
-						txtZr.setEnabled(true);
-						txtZi.setEnabled(true);
-						btnRefresh.setEnabled(true);
-						bloqueaFormula(false);
 						break;
 					default://no selecciono nada, no hacemos nada
 						break;
@@ -694,29 +600,7 @@ public class GraphicUserInterface extends JFrame {
 		}
 		return txtFuncHeader;
 	}
-	
-	/**
-	 * This method initializes jtxtformula
-	 * 	
-	 * @return javax.swing.JTextField	
-	 */
-	private JTextField getJTxtFormula() {
-		if (txtFuncBody == null) {
-			txtFuncBody = new JTextField();
-			txtFuncBody.setText("0");
-			txtFuncBody.setEnabled(false);
-		}
-		return txtFuncBody;
-	}
-	
-	private void bloqueaFormula(boolean bloquea){
-		/*bloquea = !bloquea;
-		pnlFormula.setEnabled(bloquea);
-		txtFuncHeader.setEnabled(bloquea);
-		txtFuncBody.setEnabled(bloquea);
-		btnGo.setEnabled(bloquea);
-		btnFuncHelp.setEnabled(bloquea);*/
-	}
+
 	
 	/**
 	 * generic filefilter
