@@ -1,0 +1,23 @@
+group 'cl.basilisco.math'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'application'
+
+mainClassName = 'cl.basilisco.run.Main'
+
+sourceCompatibility = 1.5
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+jar {
+    manifest {
+        attributes("Main-Class": "cl.basilisco.run.Main")
+    }
+}
