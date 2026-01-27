@@ -20,343 +20,348 @@ import cl.basilisco.core.Lambda;
 import cl.basilisco.core.Mandelbrot;
 
 /**
- * Panel para pintar nuestro fractal.
+ * Panel to paint our fractal.
  * 
  * @author Jaime Tobar Diaz, jaime.tobar.diaz@gmail.com
  *
  */
 public class MyCanvas extends JPanel {
-	
-	//variables para graficar el plano
-	private int largo = 600; //largo de la ventana
-	private double relPixPunto;//relacion Pixel - Punto en la recta
-	private double esqx=-3, esqy=3;//esquinas en coordenadas
-	private Image pintar; //para no ver el efecto pintura y guardar la imagen.
-	
-	//variables para el cuadrado
-	private int xcuboi, ycuboi,xcubof,ycubof;
-	//es blanco y negro?
-	private boolean bn;
-	
-	//que fractal usa
-	//0=Mandelbrot, 1=Julia
-	private int fractal;
-	private int tope=255;//numero de veces que iteraran los numeros
-	
-	//factor de Julia y Otros
-	private ComplexNumber constante;
-	
-	//formula de usuario
-	private String cabecera;
-	private Object[] formulafinal;
-	
-	//colores
-	float r=8;
-	float g=2;
-	float b=3;
-	
+
 	private static final long serialVersionUID = -8016335228852792096L;
-	
+
+	// variables for plotting the plane
+	private int size = 600; // window size
+	private double pixelRatio;// Ratio Pixel - Point on the line
+	private double cornerX = -3, cornerY = 3;// corner coordinates
+	private Image bufferImage; // for double buffering and saving the image.
+
+	// variables for the selection box (zoom)
+	private int boxStartX, boxStartY, boxEndX, boxEndY;
+	// is it grayscale?
+	private boolean grayscale;
+
+	// which fractal is used
+	// 0=Mandelbrot, 1=Julia
+	private int fractalType;
+	private int maxIterations = 255;// number of times the numbers will iterate
+
+	// factor for Julia and Others
+	private ComplexNumber constant;
+
+	// user formula (unused in current code but kept fields)
+
+	// colors
+	float r = 8;
+	float g = 2;
+	float b = 3;
+
 	/**
-	 * Constructor, inicializa las variables.
+	 * Constructor, initializes variables.
 	 */
-	public MyCanvas(){
-		this.relPixPunto = (esqy*2)/this.getPreferredSize().width;
-		this.bn=false;
+	public MyCanvas() {
+		this.pixelRatio = (cornerY * 2) / this.getPreferredSize().width;
+		this.grayscale = false;
 		super.setDoubleBuffered(true);
-		fractal=0;
+		fractalType = 0;
 	}
-	
-	public void acerca_area(){
-		if(xcubof>xcuboi+5){//si el cubo se ha creado con intencion y no ha sido un pequeño movimiento de mouse.
-			double esqxisel, esqyisel,esqxfsel;
-			
-			esqxisel=xcuboi;
-			esqxisel = esqxisel*relPixPunto;
-			esqxisel = esqx + esqxisel;
-			
-			esqyisel=ycuboi;
-			esqyisel = esqyisel*relPixPunto;
-			esqyisel = esqy - esqyisel;
-			
-			esqxfsel=xcubof;
-			esqxfsel = esqxfsel*relPixPunto;
-			esqxfsel = esqx + esqxfsel;
-			
-			esqx = esqxisel;
-			esqy = esqyisel;
-			relPixPunto = (esqxfsel-esqxisel)/this.getSize().width;
-			this.pinta();
-			
+
+	public void zoomArea() {
+		if (boxEndX > boxStartX + 5) {// if the box was created intentionally and not a small mouse movement
+			double cornerXSel, cornerYSel, cornerXEndSel;
+
+			cornerXSel = boxStartX;
+			cornerXSel = cornerXSel * pixelRatio;
+			cornerXSel = cornerX + cornerXSel;
+
+			cornerYSel = boxStartY;
+			cornerYSel = cornerYSel * pixelRatio;
+			cornerYSel = cornerY - cornerYSel;
+
+			cornerXEndSel = boxEndX;
+			cornerXEndSel = cornerXEndSel * pixelRatio;
+			cornerXEndSel = cornerX + cornerXEndSel;
+
+			cornerX = cornerXSel;
+			cornerY = cornerYSel;
+			pixelRatio = (cornerXEndSel - cornerXSel) / this.getSize().width;
+			this.paintFractal();
+
 		}
 	}
-	
+
 	/**
-	 * Vuelve el fractal al estado inicial.
+	 * Returns the fractal to the initial state.
 	 */
-	public void resetea(){
-			this.esqx = -3;
-			this.esqy = 3;
-			this.relPixPunto = (esqy*2)/this.getSize().height;
-		this.pinta();
+	public void resetCoords() {
+		this.cornerX = -3;
+		this.cornerY = 3;
+		this.pixelRatio = (cornerY * 2) / this.getSize().height;
 	}
-	
+
+	public void reset() {
+		resetCoords();
+		this.paintFractal();
+	}
+
 	/**
-	 * Mueve el plano para centrar el punto.
-	 * @param x punto x.
-	 * @param y punto y.
+	 * Moves the plane to center the point.
+	 * 
+	 * @param x x point.
+	 * @param y y point.
 	 */
-	public void desplaza(int x, int y){
-		this.esqx = esqx - ((this.getSize().width/2 -x)*relPixPunto);
-		this.esqy = esqy - ((y - this.getSize().height/2)*relPixPunto);
-		pinta();
-		
+	public void pan(int x, int y) {
+		this.cornerX = cornerX - ((this.getSize().width / 2 - x) * pixelRatio);
+		this.cornerY = cornerY - ((y - this.getSize().height / 2) * pixelRatio);
+		paintFractal();
 	}
-	
-	//efecto doble buffer.
+
+	// double buffer effect.
 	@Override
 	public void paint(Graphics g) {
-		if(this.pintar!=null)
-			g.drawImage(this.pintar, 0, 0, this);
+		if (this.bufferImage != null)
+			g.drawImage(this.bufferImage, 0, 0, this);
 		else
 			g.fillRect(0, 0, this.getSize().width, this.getSize().height);
-		//super.paint(g);
 	}
-	
-	
+
 	/**
-	 * Metodo q busca un punto (x,y) y devuelve su numero complejo<br>
-	 * correspondiente en el plano actual.
-	 * @param x x en el plano.
-	 * @param y y en el plano.
-	 * @return numero complejo q representa el punto solicitado.
+	 * Method that looks for a point (x,y) and returns its corresponding complex
+	 * number<br>
+	 * in the current plane.
+	 * 
+	 * @param x x in the plane.
+	 * @param y y in the plane.
+	 * @return complex number representing the requested point.
 	 */
-	public ComplexNumber coordenada(int x, int y){
-		ComplexNumber c ;
-		
-		double cx=x;
-		cx = cx*relPixPunto;
-		cx = esqx + cx;
-		
-		double cy=y;
-		cy = cy*relPixPunto;
-		cy = esqy - cy;
-		c = new ComplexNumber(cx,cy);
+	public ComplexNumber getCoordinate(int x, int y) {
+		ComplexNumber c;
+
+		double cx = x;
+		cx = cx * pixelRatio;
+		cx = cornerX + cx;
+
+		double cy = y;
+		cy = cy * pixelRatio;
+		cy = cornerY - cy;
+		c = new ComplexNumber(cx, cy);
 		return c;
 	}
-	
+
 	/**
-	 * Dibuja el cuadrado del mouse y setea las variables para su escalamiento.
-	 * @param x x en el plano.
-	 * @param y y en el plano.
-	 * @param n 0 cuando el mouse baja, 1 cuando se mueve, 2 cuando se suelta.
+	 * Draws the mouse box and sets variables for scaling.
+	 * 
+	 * @param x x in the plane.
+	 * @param y y in the plane.
+	 * @param n 0 when mouse down, 1 when dragged, 2 when released.
 	 */
-	public void mouse(int x, int y,int n){
-		if(this.pintar!=null){
-			if(n==0){
-				xcuboi=x;
-				ycuboi=y;
-				xcubof=x;
-				ycubof=y;
+	public void handleMouse(int x, int y, int n) {
+		if (this.bufferImage != null) {
+			if (n == 0) {
+				boxStartX = x;
+				boxStartY = y;
+				boxEndX = x;
+				boxEndY = y;
 			}
-			if(n==2){
-				//si no, sacamos la proporcion
-				int ancho = this.getSize().width;
-				int alto = this.getSize().height;
-				if(x>xcuboi && y > ycuboi){//se creo un area hacia la derecha/abajo
-					if((x-xcuboi)>(y-ycuboi)){//linea x es mayor q la linea y, usamos esa de referencia
-						xcubof = (x);
-						ycubof = ycuboi+(int)((x-xcuboi)*(float)alto/(float)ancho);
-					}else{
-						ycubof = y;
-						xcubof = xcuboi+(int)((y-ycuboi)*(float)ancho/(float)alto);
+			if (n == 2) {
+				// otherwise, calculate proportion
+				int width = this.getSize().width;
+				int height = this.getSize().height;
+				if (x > boxStartX && y > boxStartY) {// area created down-right
+					if ((x - boxStartX) > (y - boxStartY)) {// x line is longer than y line, use that as reference
+						boxEndX = (x);
+						boxEndY = boxStartY + (int) ((x - boxStartX) * (float) height / (float) width);
+					} else {
+						boxEndY = y;
+						boxEndX = boxStartX + (int) ((y - boxStartY) * (float) width / (float) height);
 					}
-					
-				}else if(x>xcuboi && y < ycuboi){//se creo un area hacia la derecha/arriba
-					if((x-xcuboi)>(ycuboi-y)){//linea x es mayor q la linea y, usamos esa de referencia
-						xcubof = (x);
-						ycubof = ycuboi-(int)((x-xcuboi)*(float)alto/(float)ancho);
-					}else{
-						ycubof = y;
-						xcubof = xcuboi+(int)((ycuboi-y)*(float)ancho/(float)alto);
+
+				} else if (x > boxStartX && y < boxStartY) {// area created up-right
+					if ((x - boxStartX) > (boxStartY - y)) {
+						boxEndX = (x);
+						boxEndY = boxStartY - (int) ((x - boxStartX) * (float) height / (float) width);
+					} else {
+						boxEndY = y;
+						boxEndX = boxStartX + (int) ((boxStartY - y) * (float) width / (float) height);
 					}
-				}else if(x<xcuboi && y > ycuboi){//se creo un area hacia la izquierda/abajo
-					if((xcuboi-x)>(y-ycuboi)){//linea x es mayor q la linea y, usamos esa de referencia
-						xcubof = (x);
-						ycubof = ycuboi+(int)((xcuboi-x)*(float)alto/(float)ancho);
-					}else{
-						ycubof = y;
-						xcubof = xcuboi-(int)((y-ycuboi)*(float)ancho/(float)alto);
+				} else if (x < boxStartX && y > boxStartY) {// area created down-left
+					if ((boxStartX - x) > (y - boxStartY)) {
+						boxEndX = (x);
+						boxEndY = boxStartY + (int) ((boxStartX - x) * (float) height / (float) width);
+					} else {
+						boxEndY = y;
+						boxEndX = boxStartX - (int) ((y - boxStartY) * (float) width / (float) height);
 					}
-				}else{//se creo un area hacia la izquierda/arriba
-					if((xcuboi-x)>(ycuboi-y)){//linea x es mayor q la linea y, usamos esa de referencia
-						xcubof = (x);
-						ycubof = ycuboi-(int)((xcuboi-x)*(float)alto/(float)ancho);
-					}else{
-						ycubof = y;
-						xcubof = xcuboi-(int)((ycuboi-y)*(float)ancho/(float)alto);
+				} else {// area created up-left
+					if ((boxStartX - x) > (boxStartY - y)) {
+						boxEndX = (x);
+						boxEndY = boxStartY - (int) ((boxStartX - x) * (float) height / (float) width);
+					} else {
+						boxEndY = y;
+						boxEndX = boxStartX - (int) ((boxStartY - y) * (float) width / (float) height);
 					}
 				}
-				
-				//si selecciono el area en el sentido inverso			
-				if(xcuboi>xcubof){
-					int xresp = xcuboi;
-					xcuboi=xcubof;
-					xcubof=xresp;
+
+				// if area selected in reverse
+				if (boxStartX > boxEndX) {
+					int xresp = boxStartX;
+					boxStartX = boxEndX;
+					boxEndX = xresp;
 				}
-				if(ycuboi>ycubof){
-					int yresp = ycuboi;
-					ycuboi=ycubof;
-					ycubof=yresp;
+				if (boxStartY > boxEndY) {
+					int yresp = boxStartY;
+					boxStartY = boxEndY;
+					boxEndY = yresp;
 				}
 			}
 			Graphics g = this.getGraphics();
-			g.drawImage(pintar, 0, 0, this);
+			g.drawImage(bufferImage, 0, 0, this);
 			g.setColor(Color.YELLOW);
-			if(n==2){
-				g.drawLine(xcuboi, ycuboi, xcubof, ycuboi);
-				g.drawLine(xcuboi, ycuboi, xcuboi, ycubof);
-				g.drawLine(xcubof, ycuboi, xcubof, ycubof);
-				g.drawLine(xcuboi, ycubof, xcubof, ycubof);
-			}else{
-				g.drawLine(xcuboi, ycuboi, x, ycuboi);
-				g.drawLine(xcuboi, ycuboi, xcuboi, y);
-				g.drawLine(x, ycuboi, x, y);
-				g.drawLine(xcuboi, y, x, y);
+			if (n == 2) {
+				g.drawLine(boxStartX, boxStartY, boxEndX, boxStartY);
+				g.drawLine(boxStartX, boxStartY, boxStartX, boxEndY);
+				g.drawLine(boxEndX, boxStartY, boxEndX, boxEndY);
+				g.drawLine(boxStartX, boxEndY, boxEndX, boxEndY);
+				zoomArea();
+			} else {
+				g.drawLine(boxStartX, boxStartY, x, boxStartY);
+				g.drawLine(boxStartX, boxStartY, boxStartX, y);
+				g.drawLine(x, boxStartY, x, y);
+				g.drawLine(boxStartX, y, x, y);
 			}
 		}
 	}
-	
+
 	/**
-	 * Setea el grafico a blanco y negro binario.
+	 * Toggles the graph to binary black and white / color.
 	 */
-	public void color_bn(){
-		this.bn=!this.bn;
-		this.pinta();
+	public void toggleColorMode() {
+		this.grayscale = !this.grayscale;
+		this.paintFractal();
 	}
-	
-	public void guardar(String path){
-		BufferedImage bi = new BufferedImage(this.getSize().width,this.getSize().height,BufferedImage.TYPE_INT_RGB);
+
+	public void saveImage(String path) {
+		BufferedImage bi = new BufferedImage(this.getSize().width, this.getSize().height, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = bi.createGraphics();
-		g2.drawImage(this.pintar, 0, 0, this);
+		g2.drawImage(this.bufferImage, 0, 0, this);
 		g2.dispose();
-		
-		if(!path.endsWith("png") && !path.endsWith("PNG"))
-			path=path+".png";
+
+		if (!path.endsWith("png") && !path.endsWith("PNG"))
+			path = path + ".png";
 		try {
 			ImageIO.write(bi, "PNG", new File(path));
 		} catch (IOException e) {
-			System.out.println("error al guardar");
+			System.out.println("error saving image");
 		}
 	}
-	
+
 	/**
-	 * Setea el grafico a la formula de Mandelbrot.
+	 * Sets the graph to the Mandelbrot formula.
 	 */
-	public void setMandelbrot(){
-		this.fractal=1;
+	public void setMandelbrot() {
+		this.fractalType = 1;
 	}
-	
-	
+
 	/**
-	 * Setea el grafico a la formula de Julia.
-	 * @param r parte real del numero a usar.
-	 * @param i parte imaginaria del numero a usar.
+	 * Sets the graph to the Julia formula.
+	 * 
+	 * @param r real part of the number to use.
+	 * @param i imaginary part of the number to use.
 	 */
-	public void setJulia(double r,double i){
-		this.fractal=2;
-		this.constante= new ComplexNumber(r,i);
+	public void setJulia(double r, double i) {
+		this.fractalType = 2;
+		this.constant = new ComplexNumber(r, i);
 	}
-	
+
 	/**
-	 * Otras formulas.
+	 * Other formulas.
 	 */
-	public void setMandelbrot2(){
-		this.fractal=3;
+	public void setMandelbrot2() {
+		this.fractalType = 3;
 	}
-	
-	public void setLambda(double r,double i){
-		this.fractal=4;
-		this.constante= new ComplexNumber(r,i);
+
+	public void setLambda(double r, double i) {
+		this.fractalType = 4;
+		this.constant = new ComplexNumber(r, i);
 	}
-	
-	public void setBiomorph(){
-		this.fractal=5;
+
+	public void setBiomorph() {
+		this.fractalType = 5;
 	}
-	public void setComplejo(double r,double i){
-		ComplexNumber aux = this.constante;
-		this.constante= new ComplexNumber(r,i);
-		if(this.fractal==6){//si tenemos q cambiar la formula
-			
-			for (int j = 0; j < formulafinal.length; j++)
-				if(formulafinal[j]!=null &&formulafinal[j].equals(aux))
-					formulafinal[j]=this.constante;
-		}
-			
+
+	public void setComplexConstant(double r, double i) {
+		this.constant = new ComplexNumber(r, i);
 	}
-	
-	public void setColor(float r, float g, float b){
-		this.r=r;
-		this.g=g;
-		this.b=b;
+
+	public void setColors(float r, float g, float b) {
+		this.r = r;
+		this.g = g;
+		this.b = b;
 	}
-	
+
 	@Override
 	public Dimension getPreferredSize() {
-		Dimension d = new Dimension(largo,largo);
-		return d;
+		return new Dimension(size, size);
 	}
-	
+
 	/**
-	 * el metodo que pinta el fractal sobre una imagen.
+	 * the method that paints the fractal on an image.
 	 */
-	public void pinta(){
-		//JOptionPane.showMessageDialog(this, "Calculando, esta operacion puede demorar", "Cargando...", JOptionPane.INFORMATION_MESSAGE);
-		this.pintar = createImage(this.getSize().width, this.getSize().height);
-		Graphics2D db = (Graphics2D)this.getGraphics();//pintar.getGraphics();
-		Graphics2D db2 = (Graphics2D)this.pintar.getGraphics();//pintar.getGraphics();
-		//x e y son los pixeles
+	public void paintFractal() {
+		// JOptionPane.showMessageDialog(this, "Calculating, this operation may take
+		// time", "Loading...", JOptionPane.INFORMATION_MESSAGE);
+		this.bufferImage = createImage(this.getSize().width, this.getSize().height);
+		if (this.bufferImage == null)
+			return; // safety check
+
+		Graphics2D db = (Graphics2D) this.getGraphics();
+		Graphics2D db2 = (Graphics2D) this.bufferImage.getGraphics();
+
+		// x and y are the pixels
 		int x, y;
-		//a y b recorren el eje
-		double a,b;
+		// a and b traverse the axis
+		double a, b;
 		Color color = null;
-		//mientras x recorre el eje x del lienzo, a entrega el valor real de este.
-		int xfin = this.getSize().width;
-		int yfin = this.getSize().height;
-		for (x = 0,  a=esqx; x < xfin; x++,a = a+relPixPunto) {
-			//mientras y recorre el eje y del lienzo, b entrega el valor imaginario de este.
-			for (y = 0, b=esqy; y < yfin; y++,b = b-relPixPunto) {
-				//creamos el numero complejo de esta coordenada (x,y)
-				ComplexNumber c = new ComplexNumber(a,b);
-				
-				//dependiendo la formula fractal q usemos
-				switch (this.fractal) {
-				case 1:
-					color = Mandelbrot.itera(c, tope,bn,this.r,this.g,this.b); //recogemos el color resultante de la formula
-					break;
-				case 2: //julia
-					color = Julia.itera(c,constante, tope,bn,this.r,this.g,this.b);
-					break;
-				case 3: //madelbrot2
-					color = Fractal.itera(c, tope,bn,this.r,this.g,this.b);
-					break;
-				case 4: //lambda
-					color = Lambda.itera(c,constante, tope,bn,this.r,this.g,this.b);
-					break;
-				case 5: //biomorph
-					color = Biomorph.itera(c,tope,bn,this.r,this.g,this.b);
-					break;
+		// while x traverses the x axis of the canvas, a delivers its real value.
+		int xEnd = this.getSize().width;
+		int yEnd = this.getSize().height;
+
+		for (x = 0, a = cornerX; x < xEnd; x++, a = a + pixelRatio) {
+			// while y traverses the y axis of the canvas, b delivers its imaginary value.
+			for (y = 0, b = cornerY; y < yEnd; y++, b = b - pixelRatio) {
+				// create the complex number of this coordinate (x,y)
+				ComplexNumber c = new ComplexNumber(a, b);
+
+				// depending on the fractal formula we use
+				switch (this.fractalType) {
+					case 1:
+						color = Mandelbrot.iterate(c, maxIterations, grayscale, this.r, this.g, this.b); // pick the
+																											// color
+																											// resulting
+																											// from the
+																											// formula
+						break;
+					case 2: // Julia
+						color = Julia.iterate(c, constant, maxIterations, grayscale, this.r, this.g, this.b);
+						break;
+					case 3: // Mandelbrot2
+						color = Fractal.iterate(c, maxIterations, grayscale, this.r, this.g, this.b);
+						break;
+					case 4: // Lambda
+						color = Lambda.iterate(c, constant, maxIterations, grayscale, this.r, this.g, this.b);
+						break;
+					case 5: // Biomorph
+						color = Biomorph.iterate(c, maxIterations, grayscale, this.r, this.g, this.b);
+						break;
 				}
-				
-				db.setColor(color);// y pintamos el pixel
-				db.drawLine(x, y, x, y);
-				db2.setColor(color);// y pintamos el pixel
+
+				if (db != null) {
+					db.setColor(color);// paint the pixel
+					db.drawLine(x, y, x, y);
+				}
+				db2.setColor(color);// paint the pixel on buffer
 				db2.drawLine(x, y, x, y);
 			}
 		}
-		//pintamos la imagen sobre el lienzo
-		
-		//this.repaint();
 	}
 
 }
