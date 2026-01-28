@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Chaotica - Web</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #222;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #canvas-container {
+            position: relative;
+            border: 2px solid #555;
+            cursor: crosshair;
+            width: 600px;
+            height: 600px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #controls {
+            margin-top: 10px;
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 800px;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #444;
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+
+        input[type="number"],
+        select {
+            background: #555;
+            color: white;
+            border: 1px solid #777;
+            padding: 3px;
+            border-radius: 3px;
+            width: 60px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+
+        #zoom-rect {
+            position: absolute;
+            border: 2px solid yellow;
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Fractal Chaotica: Python Web Edition</h1>
+
+    <div id="canvas-container" ondragstart="return false;">
+        <div id="fractal-img"
+            style="width: 600px; height: 600px; background-color: black; background-repeat: no-repeat;"></div>
+        <div id="input-overlay" ondragstart="return false;"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: rgba(0,0,0,0); cursor: crosshair; user-select: none; -webkit-user-select: none; touch-action: none;">
+        </div>
+        <div id="zoom-rect"></div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="reset()">Reset</button>
+            <button onclick="toggleGrayscale()">Toggle Grayscale</button>
+            <button onclick="saveImage()">Download</button>
+        </div>
+
+        <div class="control-group">
+            <label>Type:</label>
+            <select id="type" onchange="reset()">
+                <option value="Mandelbrot">Mandelbrot</option>
+                <option value="Julia">Julia</option>
+                <option value="Mandelbrot2">Mandelbrot2 (Cubic)</option>
+                <option value="Lambda">Lambda</option>
+                <option value="Biomorph">Biomorph</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Z = </label>
+            <input type="number" id="cr" value="-1" step="0.01">
+            <label>+</label>
+            <input type="number" id="ci" value="0" step="0.01">
+            <label>i</label>
+            <button onclick="refresh()">Refresh Params</button>
+            <button onclick="randomJulia()">Random Julia</button>
+        </div>
+
+        <div class="control-group">
+            <label>RGB Mul:</label>
+            <input type="number" id="rmul" value="1" step="0.1">
+            <input type="number" id="gmul" value="1" step="0.1">
+            <input type="number" id="bmul" value="1" step="0.1">
+            <button onclick="refresh()">Update Color</button>
+        </div>
+    </div>
+
+    <script>
+        const width = 600;
+        const height = 600;
+
+        // State
+        let cornerX = -3.0;
+        let cornerY = 3.0;
+        let pixelRatio = (cornerY * 2) / height;
+        let grayscale = false;
+
+        const img = document.getElementById('fractal-img');
+        const container = document.getElementById('input-overlay');
+        const zoomRect = document.getElementById('zoom-rect');
+
+        function updateImage() {
+            const type = document.getElementById('type').value;
+            const cr = document.getElementById('cr').value;
+            const ci = document.getElementById('ci').value;
+            const rmul = document.getElementById('rmul').value;
+            const gmul = document.getElementById('gmul').value;
+            const bmul = document.getElementById('bmul').value;
+
+            const url = `/generate?width=${width}&height=${height}&type=${type}&corner_x=${cornerX}&corner_y=${cornerY}&pixel_ratio=${pixelRatio}&grayscale=${grayscale}&cr=${cr}&ci=${ci}&r_mult=${rmul}&g_mult=${gmul}&b_mult=${bmul}&timestamp=${new Date().getTime()}`;
+
+            img.style.backgroundImage = `url("${url}")`;
+
+            // Enable inputs based on type
+            const isParametric = ["Julia", "Lambda"].includes(type);
+            document.getElementById('cr').disabled = !isParametric;
+            document.getElementById('ci').disabled = !isParametric;
+        }
+
+        function reset() {
+            cornerX = -3.0;
+            cornerY = 3.0;
+            pixelRatio = (cornerY * 2) / height;
+            updateImage();
+        }
+
+        function refresh() {
+            updateImage();
+        }
+
+        function toggleGrayscale() {
+            grayscale = !grayscale;
+            updateImage();
+        }
+
+        async function randomJulia() {
+            const res = await fetch('/famous_julia');
+            const data = await res.json();
+            document.getElementById('cr').value = data.r;
+            document.getElementById('ci').value = data.i;
+            document.getElementById('type').value = "Julia";
+            updateImage();
+        }
+
+        function saveImage() {
+            const link = document.createElement('a');
+            const bg = img.style.backgroundImage;
+            const safeUrl = bg.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
+            link.href = safeUrl;
+            link.download = 'fractal.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Zoom Logic
+        let isDrawing = false;
+        let startX, startY;
+
+        container.addEventListener('dragstart', e => e.preventDefault());
+
+        container.addEventListener('mousedown', e => {
+            e.preventDefault();
+            isDrawing = true;
+            const rect = container.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+
+            zoomRect.style.left = startX + 'px';
+            zoomRect.style.top = startY + 'px';
+            zoomRect.style.width = '0px';
+            zoomRect.style.height = '0px';
+            zoomRect.style.display = 'block';
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!isDrawing) return;
+            const rect = container.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            const w = currentX - startX;
+            const h = currentY - startY;
+
+            zoomRect.style.width = Math.abs(w) + 'px';
+            zoomRect.style.height = Math.abs(h) + 'px';
+            zoomRect.style.left = (w < 0 ? currentX : startX) + 'px';
+            zoomRect.style.top = (h < 0 ? currentY : startY) + 'px';
+        });
+
+        document.addEventListener('mouseup', e => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            zoomRect.style.display = 'none';
+
+            const rect = container.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+
+            if (Math.abs(endX - startX) < 10) return; // Ignore clicks
+
+            // Identify selection rectangle in pixels
+            const selXMin = Math.min(startX, endX);
+            const selYMin = Math.min(startY, endY);
+            const selWidth = Math.abs(endX - startX);
+
+            // New pixel ratio based on width
+            const oldRatio = pixelRatio;
+            const newWorldWidth = selWidth * oldRatio;
+
+            // New Corner X corresponds to selXMin
+            const newCornerX = cornerX + (selXMin * oldRatio);
+
+            // New Corner Y corresponds to selYMin (which is the TOP of the selection in screen, so HIGHEST Y in world)
+            const newCornerY = cornerY - (selYMin * oldRatio);
+
+            cornerX = newCornerX;
+            cornerY = newCornerY;
+            pixelRatio = newWorldWidth / width;
+
+            updateImage();
+        });
+
+        // Init
+        updateImage();
+
+    </script>
+</body>
+
+</html>
