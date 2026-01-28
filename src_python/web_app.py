@@ -85,6 +85,9 @@ def generate():
     return send_file(img_io, mimetype='image/png')
 
 if __name__ == '__main__':
+    import os
     print("Starting Fractal Chaotica Web Interface...")
     print("Go to http://localhost:5000")
-    app.run(debug=True, port=5000)
+    # Use environment variable to control debug mode (default: False for security)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
+    app.run(debug=debug_mode, port=5000)
